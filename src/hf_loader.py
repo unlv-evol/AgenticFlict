@@ -1,3 +1,15 @@
+"""Loader for the source HuggingFace dataset.
+
+Supports two input modes:
+
+1. **HuggingFace Hub** (default): streams the ``hao-li/AIDev`` dataset
+   using the ``datasets`` library.
+2. **Local Parquet** (preferred when available): reads a pre-downloaded
+   Parquet file specified by :data:`config.HF_PARQUET_PATH`.
+
+Both modes apply an early state filter (:func:`_filter_open_closed`) that
+removes merged PRs before any further processing, reducing downstream work.
+"""
 # from __future__ import annotations
 
 # import os
@@ -75,6 +87,15 @@ from config import (
 
 
 def pick_config() -> Optional[str]:
+    """Select the HuggingFace dataset configuration to use.
+
+    Honours :data:`config.HF_CONFIG` if it names a valid configuration.
+    Falls back to the first available configuration otherwise.
+
+    Returns:
+        Configuration name string, or ``None`` if no configurations are
+        defined for the dataset.
+    """
     configs = get_dataset_config_names(HF_DATASET_NAME)
     if HF_CONFIG and HF_CONFIG in configs:
         return HF_CONFIG
@@ -145,6 +166,15 @@ def _filter_open_closed(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _load_from_parquet(path: str) -> pd.DataFrame:
+    """Load PR records from a local Parquet file.
+
+    Args:
+        path: Filesystem path to the Parquet file.
+
+    Returns:
+        Filtered DataFrame (OPEN and CLOSED-unmerged PRs only), optionally
+        capped at :data:`config.HF_LIMIT` rows.
+    """
     df = pd.read_parquet(path, engine=HF_PARQUET_ENGINE)
     df = _filter_open_closed(df)
 
@@ -156,6 +186,15 @@ def _load_from_parquet(path: str) -> pd.DataFrame:
 
 
 def _load_from_hf() -> pd.DataFrame:
+    """Load PR records from the HuggingFace Hub.
+
+    Uses :func:`pick_config` to select the dataset configuration and loads
+    :data:`config.HF_SPLIT`. Large datasets are capped at
+    :data:`config.HF_LIMIT` rows before the state filter is applied.
+
+    Returns:
+        Filtered DataFrame (OPEN and CLOSED-unmerged PRs only).
+    """
     cfg = pick_config()
     if cfg:
         ds = load_dataset(HF_DATASET_NAME, cfg, split=HF_SPLIT)
@@ -173,6 +212,15 @@ def _load_from_hf() -> pd.DataFrame:
 
 
 def load_hf_split() -> pd.DataFrame:
+    """Load the source PR dataset using the configured input mode.
+
+    Prefers a local Parquet file (:data:`config.HF_PARQUET_PATH`) when
+    available; falls back to the HuggingFace Hub otherwise.
+
+    Returns:
+        DataFrame of OPEN and CLOSED-unmerged PR records ready for
+        :func:`extractor.prepare_prs`.
+    """
     if HF_PARQUET_PATH and os.path.exists(HF_PARQUET_PATH):
         return _load_from_parquet(HF_PARQUET_PATH)
     return _load_from_hf()

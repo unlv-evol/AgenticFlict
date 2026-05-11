@@ -1,3 +1,29 @@
+"""Runtime configuration for the AgenticFlict extraction pipeline.
+
+All settings are loaded from environment variables. A ``.env`` file in
+the repository root is picked up automatically via ``python-dotenv``, so
+exporting variables there is equivalent to setting them in the shell.
+
+Environment Variables:
+    HF_DATASET_NAME: HuggingFace dataset identifier (default: ``hao-li/AIDev``).
+    HF_CONFIG: Optional dataset configuration name.
+    HF_SPLIT: Dataset split to load (default: ``train``).
+    HF_LIMIT: Maximum PR rows to load; ``0`` means no limit.
+    HF_PARQUET_PATH: Path to a local Parquet file; takes precedence over HF Hub.
+    HF_PARQUET_ENGINE: Parquet engine to use (default: ``pyarrow``).
+    HF_TOKEN: HuggingFace API token for gated datasets.
+    GITHUB_TOKENS: Comma-separated GitHub personal access tokens.
+    MAX_PRS: Hard cap on PRs processed per run; ``0`` means no limit (default: ``200000``).
+    GIT_TIMEOUT: Per-command Git subprocess timeout in seconds (default: ``120``).
+    RETRY_SLEEP_SECS: Seconds between GitHub API retry attempts (default: ``3``).
+    SECONDARY_RATE_SLEEP_SECS: Seconds to wait after a secondary rate-limit response (default: ``30``).
+    MAX_API_RETRIES: Maximum GitHub API retry attempts per request (default: ``25``).
+    REPO_CACHE_DIR: Directory for cached repository clones (default: ``./repo_cache``).
+    OUT_DIR: Directory for Parquet output files (default: ``./out``).
+    PIPELINE_VERSION: Provenance tag written to every output row (default: ``dev``).
+    STORE_CONFLICT_TEXT: Set to ``1`` to store full conflict text in the regions table.
+    CONFLICT_TEXT_PREVIEW_LINES: Lines to include in conflict text previews (default: ``5``).
+"""
 from __future__ import annotations
 
 from dotenv import load_dotenv

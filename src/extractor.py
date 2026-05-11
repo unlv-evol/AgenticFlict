@@ -20,6 +20,16 @@ from schema import PRRow, to_dict
 
 
 def _err_class(status_code: str) -> str:
+    """Map a pipeline status code to a coarse error class label.
+
+    Args:
+        status_code: Pipeline status code, e.g. ``ERR_GH_API`` or
+            ``SKIP_MERGED_PR``.
+
+    Returns:
+        One of ``"api"``, ``"repo"``, ``"missing_ref"``, ``"merge"``,
+        ``"filtered"``, or ``"unknown"``.
+    """
     if status_code.startswith("ERR_GH"):
         return "api"
     if status_code.startswith("ERR_REPO"):
@@ -34,8 +44,19 @@ def _err_class(status_code: str) -> str:
 
 
 def prepare_prs(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalize raw rows into canonical PR rows and add pr_key.
+    """Normalise raw PR rows into the canonical pipeline format.
+
+    Applies :func:`normalize.normalize_prs` to parse heterogeneous field
+    names, drops rows with missing ``repo_full_name`` or ``pr_number``,
+    casts ``pr_number`` to ``int``, and constructs the canonical
+    ``pr_key`` identifier (``{repo_full_name}#{pr_number}``).
+
+    Args:
+        raw_df: Raw DataFrame as loaded by :func:`hf_loader.load_hf_split`.
+
+    Returns:
+        Cleaned DataFrame with columns ``repo_full_name``, ``pr_number``,
+        ``agent``, and ``pr_key``.
     """
     prs = normalize_prs(raw_df).dropna(subset=["repo_full_name", "pr_number"]).copy()
     prs["pr_number"] = prs["pr_number"].astype(int)
@@ -49,17 +70,34 @@ def extract_one(
     run_id: str,
     repo_path: str | None = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Process exactly one PR and return six DataFrames in this order:
-      pr_df,
-      regions_df,
-      conflict_files_df,
-      repo_df,
-      runlog_df,
-      conflict_file_commits_df
+    """Process a single PR through the full extraction pipeline.
 
-    This design supports checkpoint/resume because callers can append
-    outputs immediately after each PR.
+    Executes seven sequential steps:
+
+    1. Fetch repository and PR metadata via GitHub GraphQL.
+    2. Filter out merged PRs (stored only in the run log).
+    3. Clone or fetch the repository to the local cache.
+    4. Determine simulation anchors (commit OIDs for base and head).
+    5. Run a local ``git merge`` simulation.
+    6. Build the conflict-files table with file-level metrics.
+    7. Build the conflict-regions table with line-level details.
+
+    Failures at any step are captured as structured error rows so the
+    pipeline can continue with subsequent PRs without raising.
+
+    Args:
+        r: Dict representing a single normalised PR row (output of
+            :func:`prepare_prs`).
+        gh: Token pool used for GitHub GraphQL calls.
+        run_id: UUID string identifying the current pipeline run.
+        repo_path: Pre-cloned repository path. When ``None`` the repository
+            is cloned/fetched inside this function.
+
+    Returns:
+        A 6-tuple of DataFrames:
+        ``(pr_df, regions_df, conflict_files_df, repo_df, runlog_df,
+        conflict_file_commits_df)``. Any DataFrame may be empty if the
+        corresponding data is unavailable for this PR.
     """
     repo_full_name = r["repo_full_name"]
     pr_number = int(r["pr_number"])
@@ -500,9 +538,20 @@ def extract_all(
     raw_df: pd.DataFrame,
     gh: GitHubTokenPool,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Backward-compatible batch mode. Useful for small runs, but main.py
-    should prefer extract_one() for checkpoint/resume behavior.
+    """Batch-process all PRs in a DataFrame.
+
+    Convenience wrapper around :func:`extract_one` that processes every
+    row in ``raw_df`` and concatenates the results. Suitable for small
+    runs or exploratory use; for large-scale extraction prefer the
+    checkpoint/resume logic in :mod:`main`.
+
+    Args:
+        raw_df: Raw DataFrame as loaded by :func:`hf_loader.load_hf_split`.
+        gh: Token pool used for GitHub GraphQL calls.
+
+    Returns:
+        A 6-tuple of concatenated DataFrames in the same order as
+        :func:`extract_one`.
     """
     run_id = str(uuid4())
     prs = prepare_prs(raw_df)

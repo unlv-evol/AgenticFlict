@@ -10,6 +10,18 @@ from config import REPO_CACHE_DIR, GIT_TIMEOUT, STORE_CONFLICT_TEXT, CONFLICT_TE
 
 
 def run(cmd: List[str], cwd: Optional[str] = None, timeout: int = GIT_TIMEOUT) -> Tuple[int, str, str]:
+    """Run a subprocess command and return its output.
+
+    Args:
+        cmd: Command and arguments as a list, e.g. ``["git", "status"]``.
+        cwd: Working directory for the subprocess. Defaults to the current
+            directory.
+        timeout: Maximum seconds to wait before raising
+            :exc:`subprocess.TimeoutExpired`.
+
+    Returns:
+        A 3-tuple ``(returncode, stdout, stderr)``.
+    """
     p = subprocess.run(
         cmd,
         cwd=cwd,
@@ -22,12 +34,37 @@ def run(cmd: List[str], cwd: Optional[str] = None, timeout: int = GIT_TIMEOUT) -
 
 
 def repo_dir_for(full_name: str) -> str:
+    """Return the local cache path for a GitHub repository.
+
+    The path combines the repository slug with a short SHA-1 hash of the
+    slug to avoid filesystem collisions on case-insensitive systems.
+
+    Args:
+        full_name: GitHub repository slug, e.g. ``"owner/repo"``.
+
+    Returns:
+        Absolute path inside :data:`config.REPO_CACHE_DIR`.
+    """
     h = hashlib.sha1(full_name.encode("utf-8")).hexdigest()[:12]
     safe_name = full_name.replace("/", "__")
     return os.path.join(REPO_CACHE_DIR, f"{safe_name}__{h}")
 
 
 def ensure_repo(full_name: str) -> str:
+    """Clone a repository if not cached, then fetch all remotes.
+
+    Uses ``--filter=blob:none --no-checkout`` for a blobless clone that
+    downloads only the commit graph, keeping disk usage minimal.
+
+    Args:
+        full_name: GitHub repository slug, e.g. ``"owner/repo"``.
+
+    Returns:
+        Absolute path to the local repository.
+
+    Raises:
+        RuntimeError: If cloning or fetching fails.
+    """
     os.makedirs(REPO_CACHE_DIR, exist_ok=True)
     path = repo_dir_for(full_name)
 
@@ -64,6 +101,17 @@ def resolve_base_oid_before(repo_path: str, ref_name: str, before_iso: str) -> O
 
 @dataclass
 class ConflictMetrics:
+    """Summary statistics for a single merge simulation.
+
+    Attributes:
+        has_text_conflict: ``True`` if the merge produced at least one
+            textual conflict marker.
+        num_conflict_files: Number of files containing conflict markers.
+        num_conflict_markers: Total ``<<<<<<<`` markers found across all
+            files (equal to ``num_conflict_hunks``).
+        num_conflict_hunks: Total conflict regions across all files.
+        conflict_lines: Total lines enclosed by conflict markers.
+    """
     has_text_conflict: bool
     num_conflict_files: int = 0
     num_conflict_markers: int = 0
@@ -72,6 +120,17 @@ class ConflictMetrics:
 
 
 def list_conflicting_files(repo_path: str) -> List[str]:
+    """List files with unresolved conflicts in the working tree.
+
+    Runs ``git diff --name-only --diff-filter=U`` to find files in the
+    unmerged (``U``) state after a failed ``git merge``.
+
+    Args:
+        repo_path: Path to the local Git repository.
+
+    Returns:
+        List of relative file paths that contain conflict markers.
+    """
     rc, out, _ = run(["git", "diff", "--name-only", "--diff-filter=U"], cwd=repo_path)
     if rc != 0:
         return []
@@ -138,6 +197,17 @@ def conflict_type_for_path(repo_path: str, file_path: str) -> Tuple[str, str]:
 
 
 def last_touch_commit(repo_path: str, rev: str, file_path: str) -> Optional[str]:
+    """Return the SHA of the last commit that touched a file at a given revision.
+
+    Args:
+        repo_path: Path to the local Git repository.
+        rev: Commit SHA or ref to start traversal from.
+        file_path: Relative path to the file within the repository.
+
+    Returns:
+        Full commit SHA string, or ``None`` if the file has no history at
+        ``rev``.
+    """
     rc, out, _ = run(["git", "log", "-n", "1", "--format=%H", rev, "--", file_path], cwd=repo_path)
     sha = out.strip() if rc == 0 else ""
     return sha if sha else None
@@ -152,6 +222,25 @@ def extract_conflict_regions_from_text(
     store_text: bool = False,
     preview_lines: int = 5,
 ) -> Tuple[List[Dict[str, Any]], int, int]:
+    """Parse conflict markers in file text and extract region-level data.
+
+    Scans for ``<<<<<<<`` / ``=======`` / ``>>>>>>>`` conflict marker
+    triplets and records line boundaries, line counts, SHA-256 hashes,
+    and optional text previews for each conflict region.
+
+    Args:
+        text: Full text content of a conflicted file.
+        store_text: When ``True``, include the full ``ours_text`` and
+            ``theirs_text`` for each region (may be large).
+        preview_lines: Number of lines to include in ``ours_preview``
+            and ``theirs_preview`` fields.
+
+    Returns:
+        A 3-tuple ``(regions, marker_count, total_conflict_lines)`` where
+        ``regions`` is a list of region dicts, ``marker_count`` is the
+        number of conflict regions found, and ``total_conflict_lines`` is
+        the cumulative line count across all regions.
+    """
     lines = text.splitlines()
     regions: List[Dict[str, Any]] = []
 
@@ -215,6 +304,20 @@ def extract_conflict_regions_from_text(
 
 
 def compute_conflict_details(repo_path: str, files: List[str]) -> Tuple[List[Dict[str, Any]], ConflictMetrics]:
+    """Compute conflict region data and summary metrics for a list of conflicted files.
+
+    Reads each file from disk, calls :func:`extract_conflict_regions_from_text`,
+    and aggregates results across all files.
+
+    Args:
+        repo_path: Path to the local Git repository.
+        files: List of relative file paths known to be in conflict.
+
+    Returns:
+        A 2-tuple ``(regions, metrics)`` where ``regions`` is a flat list
+        of region dicts (each augmented with ``"file_path"``) and ``metrics``
+        is a :class:`ConflictMetrics` instance with aggregate counts.
+    """
     all_regions: List[Dict[str, Any]] = []
     total_markers = 0
     total_lines = 0
@@ -257,6 +360,28 @@ def merge_test(
     base_oid: str,
     head_oid: str,
 ) -> Tuple[bool, Optional[ConflictMetrics], List[Dict[str, Any]], List[str], str]:
+    """Perform a deterministic local merge simulation.
+
+    Checks out ``base_oid`` on a temporary branch and attempts
+    ``git merge --no-commit --no-ff head_oid``. The working tree is
+    always cleaned up (merge aborted) before returning.
+
+    Args:
+        repo_path: Path to the local Git repository.
+        base_oid: Commit SHA to use as the merge base.
+        head_oid: Commit SHA of the incoming branch.
+
+    Returns:
+        A 5-tuple ``(clean, metrics, regions, conflict_files, detail)``
+        where:
+
+        - ``clean`` is ``True`` if the merge succeeded without conflicts.
+        - ``metrics`` is a :class:`ConflictMetrics` instance, or ``None``
+          on checkout failure.
+        - ``regions`` is a list of region dicts (empty on a clean merge).
+        - ``conflict_files`` is a list of conflicting file paths.
+        - ``detail`` is a short diagnostic string.
+    """
     run(["git", "reset", "--hard"], cwd=repo_path)
     run(["git", "clean", "-fd"], cwd=repo_path)
 

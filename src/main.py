@@ -25,6 +25,16 @@ from git_ops import ensure_repo
 
 
 def append_df(df: pd.DataFrame, path: str, dedupe_subset: list[str] | None = None) -> None:
+    """Append a DataFrame to a CSV file with optional deduplication.
+
+    Args:
+        df: DataFrame to append. No-op if ``None`` or empty.
+        path: Destination CSV file path. Created if it does not exist.
+        dedupe_subset: Column names used to identify duplicates. When
+            provided the entire file is rewritten with duplicates removed
+            (last occurrence kept). When ``None``, rows are appended
+            directly without deduplication.
+    """
     if df is None or df.empty:
         return
 
@@ -43,6 +53,18 @@ def append_df(df: pd.DataFrame, path: str, dedupe_subset: list[str] | None = Non
 
 
 def load_done_pr_keys(pr_path: str, retry_failed: bool = False) -> set[str]:
+    """Load the set of already-processed PR keys from a prior run.
+
+    Args:
+        pr_path: Path to the PR output CSV written by a previous run.
+        retry_failed: When ``True``, exclude rows whose ``status_code``
+            starts with ``ERR_`` so that previously failed PRs are
+            re-attempted in the current run.
+
+    Returns:
+        Set of ``pr_key`` strings to skip. Returns an empty set if the
+        file does not exist or cannot be read.
+    """
     if not os.path.exists(pr_path):
         return set()
 
@@ -67,6 +89,16 @@ def load_done_pr_keys(pr_path: str, retry_failed: bool = False) -> set[str]:
 
 
 def group_prs_by_repo(prs: pd.DataFrame) -> dict[str, list[dict]]:
+    """Group a DataFrame of PR records by repository.
+
+    Args:
+        prs: DataFrame with at least a ``repo_full_name`` column.
+
+    Returns:
+        Mapping of ``repo_full_name`` to a list of row dicts for that
+        repository. Grouping improves cache locality when processing
+        multiple PRs from the same repository.
+    """
     grouped: dict[str, list[dict]] = defaultdict(list)
     for r in prs.to_dict(orient="records"):
         grouped[r["repo_full_name"]].append(r)
@@ -74,6 +106,17 @@ def group_prs_by_repo(prs: pd.DataFrame) -> dict[str, list[dict]]:
 
 
 def main() -> int:
+    """Entry point for the AgenticFlict extraction pipeline.
+
+    Loads PR records from the configured HuggingFace dataset (or local
+    Parquet), normalises them, groups by repository, clones/fetches each
+    repository once, then runs merge simulation for every PR. Supports
+    checkpoint/resume: already-processed PR keys are skipped on restart.
+    Set ``RETRY_FAILED=1`` in the environment to re-run errored PRs.
+
+    Returns:
+        Exit code: ``0`` on success, ``2`` if no GitHub tokens are configured.
+    """
     if not GITHUB_TOKENS:
         print("ERROR: Set GITHUB_TOKENS in .env (comma-separated).")
         return 2

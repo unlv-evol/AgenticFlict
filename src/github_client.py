@@ -45,6 +45,19 @@ query($owner:String!, $name:String!, $number:Int!) {
 
 
 class GitHubTokenPool:
+    """Thread-safe pool of GitHub personal access tokens.
+
+    Rotates tokens in round-robin order on every request to distribute
+    API rate-limit consumption across multiple tokens. Safe for use from
+    multiple threads.
+
+    Args:
+        tokens: Non-empty list of GitHub personal access token strings.
+
+    Raises:
+        ValueError: If ``tokens`` is empty.
+    """
+
     def __init__(self, tokens: List[str]):
         if not tokens:
             raise ValueError("No GitHub tokens provided")
@@ -53,15 +66,34 @@ class GitHubTokenPool:
         self.index = 0
 
     def _next_token(self) -> str:
+        """Return the next token in round-robin order (thread-safe).
+
+        Returns:
+            A GitHub personal access token string.
+        """
         with self.lock:
             t = self.tokens[self.index]
             self.index = (self.index + 1) % len(self.tokens)
         return t
 
     def graphql(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Robust GraphQL requester with token rotation and bounded retries.
-        Raises RuntimeError on repeated failure.
+        """Execute a GitHub GraphQL query with token rotation and retries.
+
+        Rotates through the token pool on each attempt and handles transient
+        errors (secondary rate limits, 429, 502–504) with configurable
+        backoff. Permanent GraphQL errors (e.g. not found) are raised
+        immediately as :exc:`RuntimeError`.
+
+        Args:
+            query: GraphQL query string.
+            variables: Dictionary of GraphQL variables.
+
+        Returns:
+            Parsed JSON response from the GitHub GraphQL endpoint.
+
+        Raises:
+            RuntimeError: If all retry attempts are exhausted or the
+                response contains GraphQL errors.
         """
         last_err: str = ""
 
@@ -110,4 +142,18 @@ class GitHubTokenPool:
         raise RuntimeError(f"graphql_failed_after_{MAX_API_RETRIES}_attempts: {last_err}")
 
     def fetch_repo_and_pr(self, owner: str, name: str, number: int) -> Dict[str, Any]:
+        """Fetch repository and pull-request metadata via the GitHub GraphQL API.
+
+        Args:
+            owner: Repository owner login.
+            name: Repository name.
+            number: Pull request number.
+
+        Returns:
+            Parsed JSON response dict containing ``data.repository`` and
+            ``data.repository.pullRequest`` fields.
+
+        Raises:
+            RuntimeError: If the request fails after all retry attempts.
+        """
         return self.graphql(PR_QUERY, {"owner": owner, "name": name, "number": number})
