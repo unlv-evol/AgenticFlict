@@ -4,6 +4,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2604.03551-b31b1b.svg)](https://arxiv.org/abs/2604.03551)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
+[![Docs](https://img.shields.io/badge/docs-readthedocs-blue)](https://agenticflict.readthedocs.io/)
 
 ---
 
@@ -360,7 +361,7 @@ If you use AgenticFlict in your research, please cite both the dataset and the c
 
 ```bibtex
 @dataset{agenticflict2026,
-  title     = {{AgenticFlict}: A Large-Scale Dataset of Merge Conflicts in {AI} Coding Agent Pull Requests},
+  title     = {AgenticFlict: A Large-Scale Dataset of Merge Conflicts in AI Coding Agent Pull Requests on GitHub},
   author    = {Ogenrwot, Daniel and Businge, John},
   year      = {2026},
   publisher = {Zenodo},
@@ -369,7 +370,7 @@ If you use AgenticFlict in your research, please cite both the dataset and the c
 }
 
 @article{agenticflict2026paper,
-  title   = {{AgenticFlict}: A Large-Scale Dataset of Merge Conflicts in {AI} Coding Agent Pull Requests},
+  title   = {AgenticFlict: A Large-Scale Dataset of Merge Conflicts in AI Coding Agent Pull Requests on GitHub},
   author  = {Ogenrwot, Daniel and Businge, John},
   year    = {2026},
   journal = {arXiv preprint arXiv:2604.03551},
