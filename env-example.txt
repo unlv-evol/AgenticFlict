@@ -1,0 +1,50 @@
+
+# ================================
+# GitHub API Tokens (comma-separated)
+# ================================
+# IMPORTANT: keep this secret; never commit it.
+GITHUB_TOKENS=Token1,Token2,Token3,...
+
+# ================================
+# HuggingFace Dataset (fallback)
+# ================================
+HF_DATASET_NAME=hao-li/AIDev
+HF_CONFIG=
+HF_SPLIT=train
+HF_LIMIT=0
+HF_TOKEN=Token
+
+# ================================
+# Local Parquet (preferred if provided)
+# ================================
+# If set and file exists, loader reads this instead of HF.
+HF_PARQUET_PATH=./data/all_pull_request.parquet
+HF_PARQUET_ENGINE=pyarrow
+
+# ================================
+# Extraction Controls
+# ================================
+MAX_PRS=200000
+GIT_TIMEOUT=120
+MAX_API_RETRIES=25
+
+# ================================
+# Output (multiple tables)
+# ================================
+OUT_DIR=./out
+REPO_CACHE_DIR=./repo_cache
+
+# ================================
+# Rate Handling
+# ================================
+SECONDARY_RATE_SLEEP_SECS=60
+RETRY_SLEEP_SECS=5
+
+# ================================
+# Provenance (optional but recommended)
+# ================================
+# PIPELINE_VERSION=dev
+
+STORE_CONFLICT_TEXT=0
+CONFLICT_TEXT_PREVIEW_LINES=5
+
