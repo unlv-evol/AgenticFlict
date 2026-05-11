@@ -9,7 +9,7 @@
 
 ## Abstract
 
-As AI coding agents proliferate on open-source platforms, their pull requests increasingly collide with concurrent human and agent contributions — yet the scale and nature of these conflicts remain unstudied. **AgenticFlict** is the first large-scale dataset of textual merge conflicts in AI agent-authored pull requests. It covers **107,026 simulated merges** across **59,412 repositories** and **5 distinct AI coding agents**, yielding **29,609 conflicting PRs** (27.67% conflict rate). Conflict detection is based on deterministic local merge simulation anchored at exact commit OIDs, making every label reproducible from public GitHub history. The dataset is organized as a relational schema spanning four granularities — pull request, file, conflict region, and repository — enabling studies of conflict prediction, agent behavior analysis, software evolution, and automated conflict resolution.
+Software Engineering 3.0 marks a paradigm shift in software development, in which AI coding agents are no longer just assistive tools but active contributors. While prior empirical studies have examined productivity gains and acceptance patterns in AI-assisted development, the challenges associated with integrating agent-generated contributions remain less understood. In particular, merge conflicts, a fundamental aspect of collaborative software development, remain underexplored in this context. In this paper, we present AgenticFlict, a large-scale dataset of textual merge conflicts in AI coding agent pull requests (Agentic PRs). The dataset comprises 142K+ Agentic PRs collected from 59K+ repositories, of which 107K+ are successfully processed through deterministic merge simulation. Our pipeline identifies 29K+ PRs exhibiting merge conflicts, yielding a conflict rate of 27.67%, and extracts 336K+ fine-grained conflict regions across these instances. Our preliminary exploratory analysis indicates that merge conflicts are both frequent and often substantial in AI-generated contributions, with noticeable variation across agents, emphasizing the need to better understand and manage integration challenges in AI-assisted software development.
 
 ---
 
@@ -39,7 +39,7 @@ AI coding agents such as Devin, SWE-agent, and AutoCodeRover autonomously submit
 - Repository maintainers seeking to model integration risk from AI-generated contributions
 - Empiricists investigating how agent behavior differs across programming languages, repository characteristics, and PR size
 
-AgenticFlict provides the infrastructure — labeled data, fine-grained conflict metadata, and a reproducible extraction pipeline — to pursue these questions at scale.
+AgenticFlict provides the infrastructure (labeled data, fine-grained conflict metadata, and a reproducible extraction pipeline) to pursue these questions at scale.
 
 ---
 
@@ -61,7 +61,7 @@ The 27.67% conflict rate is notably higher than rates reported in prior studies 
 
 ## Research Use Cases
 
-AgenticFlict is designed to support — but is not limited to — the following research directions:
+AgenticFlict is designed to support, but is not limited to, the following research directions:
 
 **Conflict prediction**  
 Train classifiers that predict whether an incoming agent PR will conflict, using PR size, repository activity, file overlap, and agent identity as features.
@@ -73,7 +73,7 @@ Compare conflict profiles (rate, severity, conflict type) across the 5 included 
 Use paired conflict-region data (including SHA-256 hashes of both sides of each conflict) as inputs to automated resolution models.
 
 **Software repository mining**  
-Study how repository characteristics — language, stars, fork count, default branch policy — moderate conflict likelihood in AI-authored contributions.
+Study how repository characteristics (language, stars, fork count, default branch policy) moderate conflict likelihood in AI-authored contributions.
 
 **Longitudinal and temporal analysis**  
 Use `created_at` and `closed_at` timestamps to analyze how agent deployment patterns and conflict rates have changed over time.
@@ -118,7 +118,7 @@ pr_key = {repo_full_name}#{pr_number}
 
 where `repo_full_name` follows the GitHub `owner/repository` convention.
 
-### `agenticflict_pr_{version}.csv` — Pull Request Level
+### `agenticflict_pr_{version}.csv`: Pull Request Level
 
 The primary table. One row per simulated PR.
 
@@ -144,7 +144,7 @@ The primary table. One row per simulated PR.
 | `created_at` | datetime | PR creation timestamp |
 | `closed_at` | datetime | PR closure timestamp (if closed) |
 
-### `agenticflict_conflict_files_{version}.csv` — File Level
+### `agenticflict_conflict_files_{version}.csv`: File Level
 
 One row per file involved in a conflict within a conflicting PR.
 
@@ -157,7 +157,7 @@ One row per file involved in a conflict within a conflicting PR.
 | `total_lines` | int | Total conflict-bounded lines in this file |
 | `last_touch_commit` | string | SHA of last commit to touch this file on the base branch |
 
-### `agenticflict_regions_{version}.csv` — Conflict Region Level
+### `agenticflict_regions_{version}.csv`: Conflict Region Level
 
 One row per conflict region (delimited by `<<<<<<<` / `=======` / `>>>>>>>` markers).
 
@@ -175,7 +175,7 @@ One row per conflict region (delimited by `<<<<<<<` / `=======` / `>>>>>>>` mark
 | `ours_hash` | string | SHA-256 of the `ours` conflict block |
 | `theirs_hash` | string | SHA-256 of the `theirs` conflict block |
 
-### `agenticflict_conflict_file_commits_{version}.csv` — Commit Attribution
+### `agenticflict_conflict_file_commits_{version}.csv`: Commit Attribution
 
 Maps conflicting files to the last commit that touched them on the base branch, supporting blame-style analysis.
 
@@ -185,7 +185,7 @@ Maps conflicting files to the last commit that touched them on the base branch, 
 | `file_path` | string | Conflicting file path |
 | `commit_sha` | string | SHA of the last base-branch commit touching this file |
 
-### `agenticflict_repo_{version}.csv` — Repository Level
+### `agenticflict_repo_{version}.csv`: Repository Level
 
 One row per distinct repository in the dataset.
 
@@ -199,7 +199,7 @@ One row per distinct repository in the dataset.
 | `is_fork` | bool | Whether the repository is itself a fork |
 | `is_archived` | bool | Whether the repository is archived |
 
-### `agenticflict_runlog.csv` — Execution Log (RAW only)
+### `agenticflict_runlog.csv`: Execution Log (RAW only)
 
 One row per pipeline execution attempt. Useful for auditing extraction failures and simulation skips.
 
@@ -347,8 +347,8 @@ This repository and dataset are released under the [MIT License](LICENSE).
 
 To comply with GitHub Terms of Service, **no raw source code is stored**. The dataset represents conflict content through:
 
-- **Cryptographic hashes** (`ours_hash`, `theirs_hash`) — SHA-256 digests of each conflict block, usable for deduplication and similarity analysis without storing code.
-- **Short text previews** — available only in the RAW dataset and configurable at extraction time.
+- **Cryptographic hashes** (`ours_hash`, `theirs_hash`): SHA-256 digests of each conflict block, usable for deduplication and similarity analysis without storing code.
+- **Short text previews**: available only in the RAW dataset and configurable at extraction time.
 
 Repository metadata (stars, forks, language) reflects values at extraction time and may differ from current repository state.
 
@@ -361,7 +361,7 @@ If you use AgenticFlict in your research, please cite both the dataset and the c
 ```bibtex
 @dataset{agenticflict2026,
   title     = {{AgenticFlict}: A Large-Scale Dataset of Merge Conflicts in {AI} Coding Agent Pull Requests},
-  author    = {Ogenrwot, Daniel and {UNLV EVOL Lab}},
+  author    = {Ogenrwot, Daniel and Businge, John},
   year      = {2026},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19396916},
@@ -370,7 +370,7 @@ If you use AgenticFlict in your research, please cite both the dataset and the c
 
 @article{agenticflict2026paper,
   title   = {{AgenticFlict}: A Large-Scale Dataset of Merge Conflicts in {AI} Coding Agent Pull Requests},
-  author  = {Ogenrwot, Daniel and {UNLV EVOL Lab}},
+  author  = {Ogenrwot, Daniel and Businge, John},
   year    = {2026},
   journal = {arXiv preprint arXiv:2604.03551},
   url     = {https://arxiv.org/abs/2604.03551}
@@ -381,5 +381,5 @@ If you use AgenticFlict in your research, please cite both the dataset and the c
 
 ## Contact
 
-**UNLV EVOL Lab** — University of Nevada, Las Vegas  
+**Daniel Ogenrwot**, UNLV EVOL Lab, University of Nevada, Las Vegas  
 Questions, issues, and collaboration inquiries: open an [issue](../../issues) or refer to the contact information in the [companion paper](https://arxiv.org/abs/2604.03551).

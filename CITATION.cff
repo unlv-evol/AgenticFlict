@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this dataset, please cite both the dataset and the companion paper."
+title: "AgenticFlict: A Large-Scale Dataset of Merge Conflicts in AI Coding Agent Pull Requests on GitHub"
+type: dataset
+authors:
+  - given-names: Daniel
+    family-names: Ogenrwot
+    affiliation: "UNLV EVOL Lab, University of Nevada, Las Vegas"
+    orcid: "https://orcid.org/0000-0002-0133-8164"
+  - given-names: John
+    family-names: Businge
+    affiliation: "UNLV EVOL Lab, University of Nevada, Las Vegas"
+    orcid: "https://orcid.org/0000-0003-3206-7085"
+repository-code: "https://github.com/unlv-evol/AgenticFlict"
+url: "https://doi.org/10.5281/zenodo.19396916"
+doi: 10.5281/zenodo.19396916
+license: MIT
+year: 2026
+keywords:
+  - merge conflicts
+  - AI coding agents
+  - pull requests
+  - software engineering
+  - empirical study
+  - dataset
+preferred-citation:
+  type: article
+  title: "AgenticFlict: A Large-Scale Dataset of Merge Conflicts in AI Coding Agent Pull Requests on GitHub"
+  authors:
+    - given-names: Daniel
+      family-names: Ogenrwot
+      affiliation: "UNLV EVOL Lab, University of Nevada, Las Vegas"
+      orcid: "https://orcid.org/0000-0002-0133-8164"
+    - given-names: John
+      family-names: Businge
+      affiliation: "UNLV EVOL Lab, University of Nevada, Las Vegas"
+      orcid: "https://orcid.org/0000-0003-3206-7085"
+  year: 2026
+  url: "https://arxiv.org/abs/2604.03551"
+  identifiers:
+    - type: other
+      value: "arXiv:2604.03551"
+      description: arXiv preprint
